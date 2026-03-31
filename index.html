@@ -689,11 +689,20 @@ function showFoundAlert(country, dates, consulate, visaType) {
      📅 Tarih: <b>${dates}</b><br>
      🏙️ Şehir: <b>${capitalize(consulate)}</b> &nbsp;|&nbsp; Vize: <b>${visaTypeLabel(visaType)}</b>`;
   const urls = {
-    DE: 'https://service2.diplo.de',
-    FR: 'https://france-visas.gouv.fr',
-    NL: 'https://www.vfsvisaonline.com',
+    DE: 'https://www.idata.com.tr/deu/tr/p/randevu-islemleri-deu',
+    IT: 'https://www.idata.com.tr/ita/tr/p/randevu-islemleri-ita',
+    FR: 'https://visa.vfsglobal.com/tur/tr/fra/book-an-appointment',
+    NL: 'https://visa.vfsglobal.com/tur/tr/nld/book-an-appointment',
+    ES: 'https://turkey.blsspainvisa.com/istanbul/',
+    AT: 'https://visa.vfsglobal.com/tur/tr/aut/book-an-appointment',
+    BE: 'https://visa.vfsglobal.com/tur/tr/bel/book-an-appointment',
+    CH: 'https://visa.vfsglobal.com/tur/tr/che/book-an-appointment',
+    GR: 'https://visa.vfsglobal.com/tur/tr/grc/book-an-appointment',
+    SE: 'https://visa.vfsglobal.com/tur/tr/swe/book-an-appointment',
+    NW: 'https://visa.vfsglobal.com/tur/tr/nor/book-an-appointment',
+    DK: 'https://visa.vfsglobal.com/tur/tr/dnk/book-an-appointment',
   };
-  document.getElementById('alertLink').href = urls[country.code] || 'https://www.vfsglobal.com/tr/';
+  document.getElementById('alertLink').href = urls[country.code] || 'https://visa.vfsglobal.com/tur/tr';
   alert.classList.add('show');
 }
 
