@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vize Radar — Schengen Randevu Takip</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --green: #00ff88;
+    --red: #ff3b5c;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+    --card: #15151f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    gap: 16px;
+  }
+
+  .logo-area h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 2.4rem;
+    letter-spacing: -1px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, #7b61ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .logo-area p {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .radar-icon {
+    width: 52px;
+    height: 52px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .radar-icon svg {
+    width: 100%;
+    height: 100%;
+    animation: spin 6s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 32px;
+    font-size: 0.75rem;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  .status-dot.active {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  .status-dot.error { background: var(--red); }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #statusText { color: var(--muted); flex: 1; }
+
+  .notif-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .notif-btn:hover, .notif-btn.granted {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* FORM CARD */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), #7b61ff, var(--accent2));
+    opacity: 0.6;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  select, input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  select:focus, input[type="number"]:focus {
+    border-color: var(--accent);
+  }
+
+  select option { background: #1a1a2e; }
+
+  /* Countries grid */
+  .countries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+
+  .country-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .country-chip:hover { border-color: var(--muted); }
+
+  .country-chip.selected {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.08);
+    color: var(--accent);
+  }
+
+  .country-chip .flag { font-size: 1rem; }
+
+  /* START BUTTON */
+  .start-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(123,97,255,0.15));
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(123,97,255,0.2));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .start-btn:hover::before { opacity: 1; }
+  .start-btn:hover { box-shadow: 0 0 24px rgba(0,229,255,0.3); }
+
+  .start-btn.running {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(255,59,92,0.08);
+  }
+
+  .start-btn.running::before {
+    background: rgba(255,59,92,0.1);
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .stat-num.green { color: var(--green); }
+  .stat-num.orange { color: var(--accent2); }
+
+  .stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* LOG */
+  .log-area {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    height: 220px;
+    overflow-y: auto;
+    font-size: 0.72rem;
+    line-height: 1.8;
+  }
+
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { display: flex; gap: 12px; }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-msg { color: var(--text); }
+  .log-msg.found { color: var(--green); font-weight: 500; }
+  .log-msg.error { color: var(--red); }
+  .log-msg.info { color: var(--accent); }
+
+  /* FOUND ALERT */
+  .found-alert {
+    display: none;
+    background: rgba(0,255,136,0.06);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    animation: alertIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .found-alert.show { display: block; }
+
+  @keyframes alertIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .alert-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .alert-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--green);
+    font-size: 1rem;
+  }
+
+  .alert-body { font-size: 0.78rem; color: var(--text); line-height: 1.6; }
+
+  .alert-link {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: var(--green);
+    color: #000;
+    border-radius: 5px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-decoration: none;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+
+  .alert-link:hover { opacity: 0.85; }
+
+  /* INTERVAL SELECTOR */
+  .interval-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .interval-chip {
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .interval-chip:hover { border-color: var(--muted); }
+  .interval-chip.active {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(255,107,53,0.08);
+  }
+
+  @media (max-width: 500px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .logo-area h1 { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-area">
+      <h1>VIZE RADAR</h1>
+      <p>Schengen Randevu Takip Sistemi</p>
+    </div>
+    <div class="radar-icon">
+      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="26" r="24" stroke="rgba(0,229,255,0.2)" stroke-width="1.5"/>
+        <circle cx="26" cy="26" r="16" stroke="rgba(0,229,255,0.15)" stroke-width="1"/>
+        <circle cx="26" cy="26" r="8" stroke="rgba(0,229,255,0.2)" stroke-width="1"/>
+        <line x1="26" y1="2" x2="26" y2="50" stroke="rgba(0,229,255,0.1)" stroke-width="1"/>
+        <line x1="2" y1="26" x2="50" y2="26" stroke="rgba(0,229,255,0.1)" stroke-width="1"/>
+        <path d="M26 26 L26 2 A24 24 0 0 1 50 26 Z" fill="rgba(0,229,255,0.08)"/>
+        <circle cx="26" cy="26" r="3" fill="#00e5ff"/>
+        <circle cx="26" cy="26" r="5" fill="rgba(0,229,255,0.2)" class="ping"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Bekleniyor — Tarama başlatılmadı</span>
+    <button class="notif-btn" id="notifBtn" onclick="requestNotifPermission()">🔔 BİLDİRİM</button>
+  </div>
+
+  <!-- FOUND ALERT -->
+  <div class="found-alert" id="foundAlert">
+    <div class="alert-header">
+      <span style="font-size:1.4rem">🟢</span>
+      <span class="alert-title">RANDEVU AÇILDI!</span>
+    </div>
+    <div class="alert-body" id="alertBody">—</div>
+    <a href="#" class="alert-link" id="alertLink" target="_blank">→ HEMEN RANDEVU AL</a>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="card">
+    <div class="card-title">// Takip Ayarları</div>
+    <div class="form-grid">
+
+      <div class="form-group">
+        <label>Konsolosluk / Şehir</label>
+        <select id="consulate">
+          <option value="istanbul">İstanbul</option>
+          <option value="ankara">Ankara</option>
+          <option value="izmir">İzmir</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Vize Türü</label>
+        <select id="visaType">
+          <option value="tourist">Turist (C)</option>
+          <option value="business">İş (C)</option>
+          <option value="student">Öğrenci (D)</option>
+          <option value="family">Aile Birleşimi</option>
+        </select>
+      </div>
+
+      <div class="form-group full">
+        <label>Tarama Aralığı</label>
+        <div class="interval-chips">
+          <div class="interval-chip" data-val="30" onclick="setInterval_(this)">30 sn</div>
+          <div class="interval-chip active" data-val="60" onclick="setInterval_(this)">1 dk</div>
+          <div class="interval-chip" data-val="120" onclick="setInterval_(this)">2 dk</div>
+          <div class="interval-chip" data-val="300" onclick="setInterval_(this)">5 dk</div>
+          <div class="interval-chip" data-val="600" onclick="setInterval_(this)">10 dk</div>
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label>Takip Edilecek Ülkeler</label>
+        <div class="countries-grid" id="countriesGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="scanCount">0</div>
+      <div class="stat-label">Tarama</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num green" id="foundCount">0</div>
+      <div class="stat-label">Bulunan</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num orange" id="nextScan">—</div>
+      <div class="stat-label">Sonraki</div>
+    </div>
+  </div>
+
+  <!-- START/STOP -->
+  <button class="start-btn" id="startBtn" onclick="toggleTracking()">
+    ▶ TARAMAYI BAŞLAT
+  </button>
+
+  <!-- LOG -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">// Canlı Log</div>
+    <div class="log-area" id="logArea">
+      <div class="log-line">
+        <span class="log-time">--:--:--</span>
+        <span class="log-msg info">Sistem hazır. Taramayı başlatın.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// === COUNTRIES DATA ===
+const COUNTRIES = [
+  { code:'DE', name:'Almanya', flag:'🇩🇪' },
+  { code:'FR', name:'Fransa', flag:'🇫🇷' },
+  { code:'NL', name:'Hollanda', flag:'🇳🇱' },
+  { code:'IT', name:'İtalya', flag:'🇮🇹' },
+  { code:'ES', name:'İspanya', flag:'🇪🇸' },
+  { code:'AT', name:'Avusturya', flag:'🇦🇹' },
+  { code:'BE', name:'Belçika', flag:'🇧🇪' },
+  { code:'CH', name:'İsviçre', flag:'🇨🇭' },
+  { code:'GR', name:'Yunanistan', flag:'🇬🇷' },
+  { code:'SE', name:'İsveç', flag:'🇸🇪' },
+  { code:'NW', name:'Norveç', flag:'🇳🇴' },
+  { code:'DK', name:'Danimarka', flag:'🇩🇰' },
+];
+
+let selected = new Set(['DE','FR','NL']);
+let intervalSec = 60;
+let isRunning = false;
+let timer = null;
+let countdown = null;
+let scanCount = 0;
+let foundCount = 0;
+let notifGranted = false;
+let countdownVal = 0;
+
+// Build countries grid
+const grid = document.getElementById('countriesGrid');
+COUNTRIES.forEach(c => {
+  const chip = document.createElement('div');
+  chip.className = 'country-chip' + (selected.has(c.code) ? ' selected' : '');
+  chip.innerHTML = `<span class="flag">${c.flag}</span><span>${c.name}</span>`;
+  chip.onclick = () => {
+    if (selected.has(c.code)) { selected.delete(c.code); chip.classList.remove('selected'); }
+    else { selected.add(c.code); chip.classList.add('selected'); }
+  };
+  grid.appendChild(chip);
+});
+
+function setInterval_(el) {
+  document.querySelectorAll('.interval-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  intervalSec = parseInt(el.dataset.val);
+}
+
+// Notification permission
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    log('Tarayıcınız bildirimleri desteklemiyor.', 'error'); return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    notifGranted = true;
+    document.getElementById('notifBtn').classList.add('granted');
+    document.getElementById('notifBtn').textContent = '✓ BİLDİRİM AÇIK';
+    log('Bildirim izni verildi.', 'info');
+  } else {
+    log('Bildirim izni reddedildi.', 'error');
+  }
+}
+
+// Check on load
+if (Notification.permission === 'granted') {
+  notifGranted = true;
+  document.getElementById('notifBtn').classList.add('granted');
+  document.getElementById('notifBtn').textContent = '✓ BİLDİRİM AÇIK';
+}
+
+// === MOCK SCAN (simulates checking appointment availability) ===
+// In production this would fetch from BLS/VFS/Consulate APIs
+async function scanAppointments() {
+  const consulate = document.getElementById('consulate').value;
+  const visaType = document.getElementById('visaType').value;
+  const countries = Array.from(selected);
+
+  if (countries.length === 0) { log('En az 1 ülke seçin.', 'error'); return; }
+
+  scanCount++;
+  document.getElementById('scanCount').textContent = scanCount;
+  log(`Tarama #${scanCount} — ${countries.length} ülke kontrol ediliyor...`);
+
+  // Simulate async check per country
+  for (const code of countries) {
+    const country = COUNTRIES.find(c => c.code === code);
+    await new Promise(r => setTimeout(r, 150 + Math.random() * 200));
+
+    // MOCK: ~8% chance of finding a slot (realistic sim)
+    const found = Math.random() < 0.08;
+
+    if (found) {
+      const dates = generateFakeDates();
+      foundCount++;
+      document.getElementById('foundCount').textContent = foundCount;
+      log(`${country.flag} ${country.name} — RANDEVU BULUNDU! ${dates}`, 'found');
+      showFoundAlert(country, dates, consulate, visaType);
+      sendNotification(country, dates);
+    } else {
+      log(`${country.flag} ${country.name} — Slot yok`);
+    }
+  }
+}
+
+function generateFakeDates() {
+  const now = new Date();
+  const days = Math.floor(Math.random() * 14) + 2;
+  const d = new Date(now.getTime() + days * 86400000);
+  return d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function showFoundAlert(country, dates, consulate, visaType) {
+  const alert = document.getElementById('foundAlert');
+  document.getElementById('alertBody').innerHTML =
+    `<b>${country.flag} ${country.name}</b> konsolosluğu için randevu açıldı!<br>
+     📅 Tarih: <b>${dates}</b><br>
+     🏙️ Şehir: <b>${capitalize(consulate)}</b> &nbsp;|&nbsp; Vize: <b>${visaTypeLabel(visaType)}</b>`;
+  const urls = {
+    DE: 'https://service2.diplo.de',
+    FR: 'https://france-visas.gouv.fr',
+    NL: 'https://www.vfsvisaonline.com',
+  };
+  document.getElementById('alertLink').href = urls[country.code] || 'https://www.vfsglobal.com/tr/';
+  alert.classList.add('show');
+}
+
+function sendNotification(country, dates) {
+  if (!notifGranted) return;
+  new Notification('🚨 Vize Randevusu Açıldı!', {
+    body: `${country.flag} ${country.name}: ${dates}`,
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🛂</text></svg>',
+    tag: 'vize-alert',
+    requireInteraction: true,
+  });
+}
+
+// === TRACKING CONTROL ===
+function toggleTracking() {
+  if (isRunning) stopTracking();
+  else startTracking();
+}
+
+function startTracking() {
+  if (selected.size === 0) { log('Lütfen en az 1 ülke seçin.', 'error'); return; }
+  isRunning = true;
+  const btn = document.getElementById('startBtn');
+  btn.textContent = '⏹ TARAMAYI DURDUR';
+  btn.classList.add('running');
+
+  const dot = document.getElementById('statusDot');
+  dot.classList.add('active');
+  document.getElementById('statusText').textContent = 'Aktif — Randevu aranıyor...';
+
+  log('Tarama başlatıldı.', 'info');
+  scanAppointments();
+  scheduleNext();
+}
+
+function stopTracking() {
+  isRunning = false;
+  clearTimeout(timer);
+  clearInterval(countdown);
+  const btn = document.getElementById('startBtn');
+  btn.textContent = '▶ TARAMAYI BAŞLAT';
+  btn.classList.remove('running');
+  document.getElementById('statusDot').classList.remove('active');
+  document.getElementById('statusText').textContent = 'Durduruldu';
+  document.getElementById('nextScan').textContent = '—';
+  log('Tarama durduruldu.', 'info');
+}
+
+function scheduleNext() {
+  if (!isRunning) return;
+  countdownVal = intervalSec;
+
+  countdown = setInterval(() => {
+    countdownVal--;
+    document.getElementById('nextScan').textContent = countdownVal + 's';
+    if (countdownVal <= 0) clearInterval(countdown);
+  }, 1000);
+
+  timer = setTimeout(() => {
+    if (isRunning) {
+      scanAppointments();
+      scheduleNext();
+    }
+  }, intervalSec * 1000);
+}
+
+// === LOG ===
+function log(msg, type = '') {
+  const area = document.getElementById('logArea');
+  const now = new Date().toLocaleTimeString('tr-TR');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${now}</span><span class="log-msg ${type}">${msg}</span>`;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+
+  // keep max 80 lines
+  while (area.children.length > 80) area.removeChild(area.firstChild);
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function visaTypeLabel(v) {
+  return { tourist:'Turist', business:'İş', student:'Öğrenci', family:'Aile Birleşimi' }[v] || v;
+}
+</script>
+</body>
+</html>
