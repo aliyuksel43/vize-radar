@@ -373,56 +373,89 @@
   .log-msg.error { color: var(--red); }
   .log-msg.info { color: var(--accent); }
 
-  /* FOUND ALERT */
-  .found-alert {
+  /* FOUND LIST */
+  .found-list {
     display: none;
-    background: rgba(0,255,136,0.06);
+    background: rgba(0,255,136,0.04);
     border: 1px solid var(--green);
     border-radius: 10px;
     padding: 20px 24px;
     margin-bottom: 20px;
-    animation: alertIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
   }
-
-  .found-alert.show { display: block; }
-
-  @keyframes alertIn {
-    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .alert-header {
+  .found-list.show { display: block; }
+  .found-list-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    margin-bottom: 14px;
   }
-
-  .alert-title {
+  .found-list-title {
     font-family: 'Syne', sans-serif;
     font-weight: 700;
     color: var(--green);
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-
-  .alert-body { font-size: 0.78rem; color: var(--text); line-height: 1.6; }
-
-  .alert-link {
+  .found-count-badge {
+    background: var(--green);
+    color: #000;
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .clear-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+  .found-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(0,255,136,0.05);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 7px;
+    margin-bottom: 8px;
+    gap: 12px;
+    animation: alertIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .found-item:last-child { margin-bottom: 0; }
+  @keyframes alertIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .found-item-info { flex: 1; }
+  .found-item-country { font-size: 0.82rem; color: var(--text); font-weight: 500; }
+  .found-item-meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .found-item-link {
     display: inline-block;
-    margin-top: 12px;
-    padding: 8px 16px;
+    padding: 7px 14px;
     background: var(--green);
     color: #000;
     border-radius: 5px;
     font-family: 'Syne', sans-serif;
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-decoration: none;
     letter-spacing: 1px;
+    white-space: nowrap;
     transition: opacity 0.2s;
+    flex-shrink: 0;
   }
-
-  .alert-link:hover { opacity: 0.85; }
+  .found-item-link:hover { opacity: 0.85; }
 
   /* INTERVAL SELECTOR */
   .interval-chips {
@@ -485,14 +518,16 @@
     <button class="notif-btn" id="notifBtn" onclick="requestNotifPermission()">🔔 BİLDİRİM</button>
   </div>
 
-  <!-- FOUND ALERT -->
-  <div class="found-alert" id="foundAlert">
-    <div class="alert-header">
-      <span style="font-size:1.4rem">🟢</span>
-      <span class="alert-title">RANDEVU AÇILDI!</span>
+  <!-- FOUND LIST -->
+  <div class="found-list" id="foundList">
+    <div class="found-list-header">
+      <div class="found-list-title">
+        🟢 BULUNAN RANDEVULAR
+        <span class="found-count-badge" id="foundBadge">0</span>
+      </div>
+      <button class="clear-btn" onclick="clearFoundList()">TEMİZLE</button>
     </div>
-    <div class="alert-body" id="alertBody">—</div>
-    <a href="#" class="alert-link" id="alertLink" target="_blank">→ HEMEN RANDEVU AL</a>
+    <div id="foundItems"></div>
   </div>
 
   <!-- CONFIG -->
@@ -667,7 +702,7 @@ async function scanAppointments() {
       foundCount++;
       document.getElementById('foundCount').textContent = foundCount;
       log(`${country.flag} ${country.name} — RANDEVU BULUNDU! ${dates}`, 'found');
-      showFoundAlert(country, dates, consulate, visaType);
+      addFoundItem(country, dates, consulate, visaType);
       sendNotification(country, dates);
     } else {
       log(`${country.flag} ${country.name} — Slot yok`);
@@ -682,36 +717,58 @@ function generateFakeDates() {
   return d.toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
 }
 
-function showFoundAlert(country, dates, consulate, visaType) {
-  const alert = document.getElementById('foundAlert');
-  document.getElementById('alertBody').innerHTML =
-    `<b>${country.flag} ${country.name}</b> konsolosluğu için randevu açıldı!<br>
-     📅 Tarih: <b>${dates}</b><br>
-     🏙️ Şehir: <b>${capitalize(consulate)}</b> &nbsp;|&nbsp; Vize: <b>${visaTypeLabel(visaType)}</b>`;
-  const urls = {
-    DE: 'https://www.idata.com.tr/deu/tr/p/randevu-islemleri-deu',
-    IT: 'https://www.idata.com.tr/ita/tr/p/randevu-islemleri-ita',
-    FR: 'https://visa.vfsglobal.com/tur/tr/fra/book-an-appointment',
-    NL: 'https://visa.vfsglobal.com/tur/tr/nld/book-an-appointment',
-    ES: 'https://turkey.blsspainvisa.com/istanbul/',
-    AT: 'https://visa.vfsglobal.com/tur/tr/aut/book-an-appointment',
-    BE: 'https://visa.vfsglobal.com/tur/tr/bel/book-an-appointment',
-    CH: 'https://visa.vfsglobal.com/tur/tr/che/book-an-appointment',
-    GR: 'https://visa.vfsglobal.com/tur/tr/grc/book-an-appointment',
-    SE: 'https://visa.vfsglobal.com/tur/tr/swe/book-an-appointment',
-    NW: 'https://visa.vfsglobal.com/tur/tr/nor/book-an-appointment',
-    DK: 'https://visa.vfsglobal.com/tur/tr/dnk/book-an-appointment',
-  };
-  document.getElementById('alertLink').href = urls[country.code] || 'https://visa.vfsglobal.com/tur/tr';
-  alert.classList.add('show');
+const VISA_URLS = {
+  DE: 'https://www.idata.com.tr/deu/tr/p/randevu-islemleri-deu',
+  IT: 'https://www.idata.com.tr/ita/tr/p/randevu-islemleri-ita',
+  FR: 'https://visa.vfsglobal.com/tur/tr/fra/book-an-appointment',
+  NL: 'https://visa.vfsglobal.com/tur/tr/nld/book-an-appointment',
+  ES: 'https://turkey.blsspainvisa.com/istanbul/',
+  AT: 'https://visa.vfsglobal.com/tur/tr/aut/book-an-appointment',
+  BE: 'https://visa.vfsglobal.com/tur/tr/bel/book-an-appointment',
+  CH: 'https://visa.vfsglobal.com/tur/tr/che/book-an-appointment',
+  GR: 'https://visa.vfsglobal.com/tur/tr/grc/book-an-appointment',
+  SE: 'https://visa.vfsglobal.com/tur/tr/swe/book-an-appointment',
+  NW: 'https://visa.vfsglobal.com/tur/tr/nor/book-an-appointment',
+  DK: 'https://visa.vfsglobal.com/tur/tr/dnk/book-an-appointment',
+};
+
+let foundItems = [];
+
+function addFoundItem(country, dates, consulate, visaType) {
+  const now = new Date().toLocaleTimeString('tr-TR');
+  const url = VISA_URLS[country.code] || 'https://visa.vfsglobal.com/tur/tr';
+  foundItems.push({ country, dates, consulate, visaType, time: now, url });
+
+  const list = document.getElementById('foundList');
+  const container = document.getElementById('foundItems');
+  list.classList.add('show');
+
+  const item = document.createElement('div');
+  item.className = 'found-item';
+  item.innerHTML = `
+    <div class="found-item-info">
+      <div class="found-item-country">${country.flag} ${country.name} — ${capitalize(consulate)}</div>
+      <div class="found-item-meta">📅 ${dates} &nbsp;|&nbsp; 🕐 ${now} &nbsp;|&nbsp; ${visaTypeLabel(visaType)}</div>
+    </div>
+    <a href="${url}" class="found-item-link" target="_blank">→ RANDEVU AL</a>
+  `;
+  container.prepend(item);
+  document.getElementById('foundBadge').textContent = foundItems.length;
+}
+
+function clearFoundList() {
+  foundItems = [];
+  document.getElementById('foundItems').innerHTML = '';
+  document.getElementById('foundList').classList.remove('show');
+  document.getElementById('foundBadge').textContent = '0';
 }
 
 function sendNotification(country, dates) {
   if (!notifGranted) return;
-  new Notification('🚨 Vize Randevusu Açıldı!', {
-    body: `${country.flag} ${country.name}: ${dates}`,
+  new Notification(`🚨 ${country.flag} ${country.name} — Randevu Açıldı!`, {
+    body: `📅 ${dates} — Hemen randevu almak için tıklayın`,
     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🛂</text></svg>',
-    tag: 'vize-alert',
+    tag: `vize-${country.code}`,
     requireInteraction: true,
   });
 }
